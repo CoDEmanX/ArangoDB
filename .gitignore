@@ -114,3 +114,6 @@ npm-debug.log
 UNITTEST_RESULT*
 log-*
 data-*
+
+WindowsLibraries/*
+*.7z
