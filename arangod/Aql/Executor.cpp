@@ -238,6 +238,9 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "DATE_TIMESTAMP",              Function("DATE_TIMESTAMP",              "AQL_DATE_TIMESTAMP", "ns|ns,ns,ns,ns,ns,ns", true, true, false, true, true) },
   { "DATE_ISO8601",                Function("DATE_ISO8601",                "AQL_DATE_ISO8601", "ns|ns,ns,ns,ns,ns,ns", true, true, false, true, true) },
   { "DATE_DAYOFWEEK",              Function("DATE_DAYOFWEEK",              "AQL_DATE_DAYOFWEEK", "ns", true, true, false, true, true) },
+  { "DATE_DAYOFYEAR",              Function("DATE_DAYOFYEAR",              "AQL_DATE_DAYOFYEAR", "ns", true, true, false, true, true) },
+  { "DATE_LEAPYEAR",               Function("DATE_LEAPYEAR",               "AQL_DATE_LEAPYEAR", "ns", true, true, false, true, true) },
+  { "DATE_ISOWEEK",                Function("DATE_ISOWEEK",                "AQL_DATE_ISOWEEK", "ns", true, true, false, true, true) },
   { "DATE_YEAR",                   Function("DATE_YEAR",                   "AQL_DATE_YEAR", "ns", true, true, false, true, true) },
   { "DATE_MONTH",                  Function("DATE_MONTH",                  "AQL_DATE_MONTH", "ns", true, true, false, true, true) },
   { "DATE_DAY",                    Function("DATE_DAY",                    "AQL_DATE_DAY", "ns", true, true, false, true, true) },
@@ -245,6 +248,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "DATE_MINUTE",                 Function("DATE_MINUTE",                 "AQL_DATE_MINUTE", "ns", true, true, false, true, true) },
   { "DATE_SECOND",                 Function("DATE_SECOND",                 "AQL_DATE_SECOND", "ns", true, true, false, true, true) },
   { "DATE_MILLISECOND",            Function("DATE_MILLISECOND",            "AQL_DATE_MILLISECOND", "ns", true, true, false, true, true) },
+  { "DATE_CALC",                   Function("DATE_CALC",                   "AQL_DATE_CALC", "ns,s,n", true, true, false, true, true) },
 
   // misc functions
   { "FAIL",                        Function("FAIL",                        "AQL_FAIL", "|s", false, false, true, true, true) },

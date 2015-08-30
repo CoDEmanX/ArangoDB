@@ -146,6 +146,40 @@ var TYPEWEIGHT_STRING    = 4;
 var TYPEWEIGHT_ARRAY     = 8;
 var TYPEWEIGHT_OBJECT    = 16;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief offsets for day of year calculation
+////////////////////////////////////////////////////////////////////////////////
+
+var dayOfYearOffsets = [
+  0,
+  31, // + 31 Jan
+  59, // + 28 Feb *
+  90, // + 31 Mar
+  120, // + 30 Apr
+  151, // + 31 May
+  181, // + 30 Jun
+  212, // + 31 Jul
+  243, // + 31 Aug
+  273, // + 30 Sep
+  304, // + 31 Oct
+  334 // + 30 Nov
+];
+
+var dayOfLeapYearOffsets = [
+  0,
+  31, // + 31 Jan
+  59, // + 29 Feb *
+  91, // + 31 Mar
+  121, // + 30 Apr
+  152, // + 31 May
+  182, // + 30 Jun
+  213, // + 31 Jul
+  244, // + 31 Aug
+  274, // + 30 Sep
+  305, // + 31 Oct
+  335 // + 30 Nov
+];
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
@@ -4494,6 +4528,25 @@ function AQL_DATE_DAYOFWEEK (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the ISO week date of the date passed (1..53)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_ISOWEEK (value) {
+  'use strict';
+
+  try {
+    var date = MAKE_DATE([ value ], "DATE_ISOWEEK");
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+    return Math.ceil((((date - Date.UTC(date.getUTCFullYear(), 0, 1)) / 864e5) + 1) / 7);
+  }
+  catch (err) {
+    WARN("DATE_ISOWEEK", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the year of the date passed
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4601,6 +4654,122 @@ function AQL_DATE_MILLISECOND (value) {
   }
   catch (err) {
     WARN("DATE_MILLISECOND", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add/subtract a time unit and return the calculated date of the date passed
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_CALC (value, unit, amount) {
+  'use strict';
+
+    var unitGetter;
+    var unitSetter;
+    switch (unit.toLowerCase()){
+      case "y":
+      case "year":
+      case "years":
+        unitGetter = "getUTCFullYear";
+        unitSetter = "setUTCFullYear";
+        break;
+      case "m":
+        if (unit == "M") {
+            unitGetter = "getUTCMonth";
+            unitSetter = "setUTCMonth";
+        } else {
+            unitGetter = "getUTCMinutes";
+            unitSetter = "setUTCMinutes";
+        }
+        break;
+      case "month":
+      case "months":
+        unitGetter = "getUTCMonth";
+        unitSetter = "setUTCMonth";
+        break;
+      case "d":
+      case "day":
+      case "days":
+        unitGetter = "getUTCDate";
+        unitSetter = "setUTCDate";
+        break;
+      case "h":
+      case "hour":
+      case "hours":
+        unitGetter = "getUTCHours";
+        unitSetter = "setUTCHours";
+        break;
+      // "m" already handled above
+      case "minute":
+      case "minutes":
+        unitGetter = "getUTCMinutes";
+        unitSetter = "setUTCMinutes";
+        break;
+      case "s":
+      case "second":
+      case "seconds":
+        unitGetter = "getUTCSeconds";
+        unitSetter = "setUTCSeconds";
+        break;
+      case "ms":
+      case "millisecond":
+      case "milliseconds":
+        unitGetter = "getUTCMilliseconds";
+        unitSetter = "setUTCMilliseconds";
+        break;
+      default:
+        // TODO: distinct error?
+        WARN("DATE_CALC", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+        return null;
+    }
+  try {
+        var date = MAKE_DATE([ value ], "DATE_CALC");
+        date[unitSetter](date[unitGetter]() + amount);
+        return date.toISOString();
+  }
+  catch (err) {
+    WARN("DATE_CALC", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return if year of the date passed is a leap year
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_LEAPYEAR(value) {
+  'use strict';
+
+  try {
+    var yr = MAKE_DATE([ value ], "DATE_LEAPYEAR").getUTCFullYear();
+    return !((yr % 4) || (!(yr % 100) && (yr % 400)));
+  }
+  catch (err) {
+    WARN("DATE_LEAPYEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the day of the year of the date passed
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_DAYOFYEAR(value) {
+  'use strict';
+
+  try {
+    var date = MAKE_DATE([ value ], "DATE_DAYOFYEAR");
+    var m = date.getUTCMonth();
+    var d = date.getUTCDate();
+    var ly = AQL_DATE_LEAPYEAR(date.getTime());
+    // we could duplicate the leap year code here to avoid an extra MAKE_DATE() call...
+    //var yr = date.getUTCFullYear();
+    //var ly = !((yr % 4) || (!(yr % 100) && (yr % 400)));
+    return (ly ? (dayOfLeapYearOffsets[m] + d) : (dayOfYearOffsets[m] + d));
+  }
+  catch (err) {
+    WARN("DATE_DAYOFYEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
@@ -8546,6 +8715,9 @@ exports.AQL_DATE_NOW = AQL_DATE_NOW;
 exports.AQL_DATE_TIMESTAMP = AQL_DATE_TIMESTAMP;
 exports.AQL_DATE_ISO8601 = AQL_DATE_ISO8601;
 exports.AQL_DATE_DAYOFWEEK = AQL_DATE_DAYOFWEEK;
+exports.AQL_DATE_DAYOFYEAR = AQL_DATE_DAYOFYEAR;
+exports.AQL_DATE_LEAPYEAR = AQL_DATE_LEAPYEAR;
+exports.AQL_DATE_ISOWEEK = AQL_DATE_ISOWEEK;
 exports.AQL_DATE_YEAR = AQL_DATE_YEAR;
 exports.AQL_DATE_MONTH = AQL_DATE_MONTH;
 exports.AQL_DATE_DAY = AQL_DATE_DAY;
@@ -8553,6 +8725,7 @@ exports.AQL_DATE_HOUR = AQL_DATE_HOUR;
 exports.AQL_DATE_MINUTE = AQL_DATE_MINUTE;
 exports.AQL_DATE_SECOND = AQL_DATE_SECOND;
 exports.AQL_DATE_MILLISECOND = AQL_DATE_MILLISECOND;
+exports.AQL_DATE_CALC = AQL_DATE_CALC;
 
 exports.reload = reloadUserFunctions;
 

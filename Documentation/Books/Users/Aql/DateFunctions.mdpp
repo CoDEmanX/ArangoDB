@@ -84,6 +84,12 @@ The above functions are all equivalent and will return *"2014-05-07T14:19:09.522
 The following date functions can be used with dates created by *DATE_TIMESTAMP* and
 *DATE_ISO8601*:
 
+- *DATE_ISOWEEK(date)*: Returns the ISO week date of *date*. The return values
+  range from 1 to 53. Monday is considered the first day of the week. There are no
+  fractional weeks, thus the last days in December may belong to the first week of
+  the next year, and the first days in January may be part of the previous year's
+  last week.
+
 - *DATE_DAYOFWEEK(date)*: Returns the weekday number of *date*. The
   return values have the following meanings:
   - 0: Sunday
@@ -93,6 +99,11 @@ The following date functions can be used with dates created by *DATE_TIMESTAMP* 
   - 4: Thursday
   - 5: Friday
   - 6: Saturday
+
+- *DATE_DAYOFYEAR(date)*: Returns the day of year number of *date*.
+  The return values range from 1 to 365, or 366 in a leap year respectively.
+
+- *DATE_LEAPYEAR(date)*: Returns whether the year of *date* is a leap year.
 
 - *DATE_YEAR(date)*: Returns the year part of *date* as a number. 
 
@@ -116,6 +127,31 @@ The following other date functions are also available:
   
   Note that this function is evaluated on every invocation and may return different 
   values when invoked multiple times in the same query.
+
+- *DATE_CALC(date, unit, amount)*: Adds or subtracts *amount* given in *unit* from *date*
+  and returns the calculated date.
+
+  *unit* can be either of the following to specify the time unit to add or subtract:
+  - Years: "y", "year", "years"
+  - Months: "M", "month", "months"
+  - Days: "d", "day", "days"
+  - Hours: "h", "hour", "hours"
+  - Minutes: "m", "minute", "minutes"
+  - Seconds: "s", "second", "seconds"
+  - Milliseconds: "ms", "millisecond", "milliseconds"
+
+  *unit* is case-insensitive, except for "M" (months) and "m" (minutes).
+
+  *amount* is the number of *unit*s to add (positive value) or subtract (negative value).
+
+  Examples:
+
+    DATE_CALC(DATE_NOW(), "day", -1) // yesterday
+    DATE_CALC(DATE_NOW(), "months", 3) // in three months
+    DATE_CALC(DATE_CALC("2015-04-01", "years", 5), "month", 1) // May 1st 2020
+    DATE_CALC("2015-04-01", "months", 12*5 + 1) // also May 1st 2020
+    DATE_CALC(DATE_TIMESTAMP(DATE_YEAR(DATE_NOW()), 12, 24), "years", -4) // Christmas four years ago
+    DATE_CALC(DATE_CALC("2016-02", "month", 1), "day", -1) // last day of February (29th, because 2016 is a leap year!)
 
 
 Working with dates and indices
