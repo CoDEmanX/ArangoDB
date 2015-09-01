@@ -147,6 +147,29 @@ var TYPEWEIGHT_ARRAY     = 8;
 var TYPEWEIGHT_OBJECT    = 16;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief mapping of time interval names to date constructor pos, getter, setter
+////////////////////////////////////////////////////////////////////////////////
+
+var intervalMapping = {
+  year: [1, "getUTCFullYear", "setUTCFullYear"],
+  month: [2, "getUTCMonth", "setUTCMonth"],
+  day: [3, "getUTCDate", "setUTCDate"],
+  hour: [4, "getUTCHours", "setUTCHours"],
+  minute: [5, "getUTCMinutes", "setUTCMinutes"],
+  second: [6, "getUTCSeconds", "setUTCSeconds"],
+  millisecond: [7, "getUTCMilliseconds", "setUTCMilliseconds"]
+}
+
+// aliases
+intervalMapping.y = intervalMapping.year;
+intervalMapping.m = intervalMapping.month;
+intervalMapping.d = intervalMapping.day;
+intervalMapping.h = intervalMapping.hour;
+intervalMapping.min = intervalMapping.minute;
+intervalMapping.s = intervalMapping.second;
+intervalMapping.ms = intervalMapping.millisecond;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief offsets for day of year calculation
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4675,74 +4698,20 @@ function AQL_DATE_MILLISECOND (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add/subtract a time interval and return the calculated date of the date passed
+/// @brief return date passed with added or subtracted amount of time intervals
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_DATE_CALC (value, interval, amount) {
   'use strict';
-
-    var intervalGetter;
-    var intervalSetter;
-    switch (interval.toLowerCase()){
-      case "y":
-      case "year":
-      case "years":
-        intervalGetter = "getUTCFullYear";
-        intervalSetter = "setUTCFullYear";
-        break;
-      case "m":
-        if (interval == "M") {
-            intervalGetter = "getUTCMonth";
-            intervalSetter = "setUTCMonth";
-        } else {
-            intervalGetter = "getUTCMinutes";
-            intervalSetter = "setUTCMinutes";
-        }
-        break;
-      case "month":
-      case "months":
-        intervalGetter = "getUTCMonth";
-        intervalSetter = "setUTCMonth";
-        break;
-      case "d":
-      case "day":
-      case "days":
-        intervalGetter = "getUTCDate";
-        intervalSetter = "setUTCDate";
-        break;
-      case "h":
-      case "hour":
-      case "hours":
-        intervalGetter = "getUTCHours";
-        intervalSetter = "setUTCHours";
-        break;
-      // "m" already handled above
-      case "minute":
-      case "minutes":
-        intervalGetter = "getUTCMinutes";
-        intervalSetter = "setUTCMinutes";
-        break;
-      case "s":
-      case "second":
-      case "seconds":
-        intervalGetter = "getUTCSeconds";
-        intervalSetter = "setUTCSeconds";
-        break;
-      case "ms":
-      case "millisecond":
-      case "milliseconds":
-        intervalGetter = "getUTCMilliseconds";
-        intervalSetter = "setUTCMilliseconds";
-        break;
-      default:
-        // TODO: distinct error?
-        WARN("DATE_CALC", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
-        return null;
-    }
+  var m = intervalMapping[interval.toLowerCase()]; // AQL_TO_STRING?
+  if (typeof m === "undefined") {
+    WARN("DATE_CALC", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
   try {
-        var date = MAKE_DATE([ value ], "DATE_CALC");
-        date[intervalSetter](date[intervalGetter]() + amount);
-        return date.toISOString();
+    var date = MAKE_DATE([ value ], "DATE_CALC");
+    date[m[2]](date[m[1]]() + amount);
+    return date.toISOString();
   }
   catch (err) {
     WARN("DATE_CALC", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
@@ -4786,6 +4755,40 @@ function AQL_DATE_DAYOFYEAR(value) {
   }
   catch (err) {
     WARN("DATE_DAYOFYEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return date difference in given interval, optionally with fractions
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_DIFF(value1, value2, interval, withFractions) {
+  'use strict';
+
+  var m = intervalMapping[interval.toLowerCase()];
+  if (typeof m === "undefined") {
+    WARN("DATE_DIFF", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+  try {
+    var date1 = MAKE_DATE([ value1 ], "DATE_DIFF");
+    var date2 = MAKE_DATE([ value2 ], "DATE_DIFF");
+    if (m[0] === 7) {
+        return date1 - date2;
+    }
+    
+    
+    var m = date.getUTCMonth();
+    var d = date.getUTCDate();
+    var ly = AQL_DATE_LEAPYEAR(date.getTime());
+    // we could duplicate the leap year code here to avoid an extra MAKE_DATE() call...
+    //var yr = date.getUTCFullYear();
+    //var ly = !((yr % 4) || (!(yr % 100) && (yr % 400)));
+    return (ly ? (dayOfLeapYearOffsets[m] + d) : (dayOfYearOffsets[m] + d));
+  }
+  catch (err) {
+    WARN("DATE_DIFF", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
