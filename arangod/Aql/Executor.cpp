@@ -241,6 +241,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "DATE_DAYOFYEAR",              Function("DATE_DAYOFYEAR",              "AQL_DATE_DAYOFYEAR", "ns", true, true, false, true, true) },
   { "DATE_LEAPYEAR",               Function("DATE_LEAPYEAR",               "AQL_DATE_LEAPYEAR", "ns", true, true, false, true, true) },
   { "DATE_ISOWEEK",                Function("DATE_ISOWEEK",                "AQL_DATE_ISOWEEK", "ns", true, true, false, true, true) },
+  { "DATE_QUARTER",                Function("DATE_QUARTER",                "AQL_DATE_QUARTER", "ns", true, true, false, true, true) },
   { "DATE_YEAR",                   Function("DATE_YEAR",                   "AQL_DATE_YEAR", "ns", true, true, false, true, true) },
   { "DATE_MONTH",                  Function("DATE_MONTH",                  "AQL_DATE_MONTH", "ns", true, true, false, true, true) },
   { "DATE_DAY",                    Function("DATE_DAY",                    "AQL_DATE_DAY", "ns", true, true, false, true, true) },
@@ -249,6 +250,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "DATE_SECOND",                 Function("DATE_SECOND",                 "AQL_DATE_SECOND", "ns", true, true, false, true, true) },
   { "DATE_MILLISECOND",            Function("DATE_MILLISECOND",            "AQL_DATE_MILLISECOND", "ns", true, true, false, true, true) },
   { "DATE_CALC",                   Function("DATE_CALC",                   "AQL_DATE_CALC", "ns,s,n", true, true, false, true, true) },
+  { "DATE_DIFF",                   Function("DATE_DIFF",                   "AQL_DATE_DIFF", "ns,ns,s|b", true, true, false, true, true) },
 
   // misc functions
   { "FAIL",                        Function("FAIL",                        "AQL_FAIL", "|s", false, false, true, true, true) },

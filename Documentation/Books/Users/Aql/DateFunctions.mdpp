@@ -128,10 +128,10 @@ The following other date functions are also available:
   Note that this function is evaluated on every invocation and may return different 
   values when invoked multiple times in the same query.
 
-- *DATE_CALC(date, unit, amount)*: Adds or subtracts *amount* given in *unit* from *date*
-  and returns the calculated date.
+- *DATE_CALC(date, interval, amount)*: Adds or subtracts *amount* given in *interval*
+  from *date* and returns the calculated date.
 
-  *unit* can be either of the following to specify the time unit to add or subtract:
+  *interval* can be either of the following to specify the time interval to add or subtract:
   - Years: "y", "year", "years"
   - Months: "M", "month", "months"
   - Days: "d", "day", "days"
@@ -140,9 +140,9 @@ The following other date functions are also available:
   - Seconds: "s", "second", "seconds"
   - Milliseconds: "ms", "millisecond", "milliseconds"
 
-  *unit* is case-insensitive, except for "M" (months) and "m" (minutes).
+  *interval* is case-insensitive, except for "M" (months) and "m" (minutes).
 
-  *amount* is the number of *unit*s to add (positive value) or subtract (negative value).
+  *amount* is the number of *interval*s to add (positive value) or subtract (negative value).
 
   Examples:
 

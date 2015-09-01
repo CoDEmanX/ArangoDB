@@ -955,9 +955,9 @@ function ahuacatlDateFunctionsTestSuite () {
       ];
 
       values.forEach(function (value) {
-        var actual = getQueryResults("RETURN DATE_CALC(@value, @unit, @amount)", {
+        var actual = getQueryResults("RETURN DATE_CALC(@value, @interval, @amount)", {
           value: value[0][0],
-          unit: value[0][1],
+          interval: value[0][1],
           amount: value[0][2],
         });
         assertEqual([ value[1] ], actual);

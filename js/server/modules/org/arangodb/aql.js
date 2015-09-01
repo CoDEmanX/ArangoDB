@@ -4547,6 +4547,22 @@ function AQL_DATE_ISOWEEK (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the ISO week date of the date passed (1..53)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_QUARTER (value) {
+  'use strict';
+
+  try {
+    return (MAKE_DATE([ value ], "DATE_QUARTER").getUTCMonth() - 1) / 3 + 1 | 0;
+  }
+  catch (err) {
+    WARN("DATE_QUARTER", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the year of the date passed
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4659,64 +4675,64 @@ function AQL_DATE_MILLISECOND (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add/subtract a time unit and return the calculated date of the date passed
+/// @brief add/subtract a time interval and return the calculated date of the date passed
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_DATE_CALC (value, unit, amount) {
+function AQL_DATE_CALC (value, interval, amount) {
   'use strict';
 
-    var unitGetter;
-    var unitSetter;
-    switch (unit.toLowerCase()){
+    var intervalGetter;
+    var intervalSetter;
+    switch (interval.toLowerCase()){
       case "y":
       case "year":
       case "years":
-        unitGetter = "getUTCFullYear";
-        unitSetter = "setUTCFullYear";
+        intervalGetter = "getUTCFullYear";
+        intervalSetter = "setUTCFullYear";
         break;
       case "m":
-        if (unit == "M") {
-            unitGetter = "getUTCMonth";
-            unitSetter = "setUTCMonth";
+        if (interval == "M") {
+            intervalGetter = "getUTCMonth";
+            intervalSetter = "setUTCMonth";
         } else {
-            unitGetter = "getUTCMinutes";
-            unitSetter = "setUTCMinutes";
+            intervalGetter = "getUTCMinutes";
+            intervalSetter = "setUTCMinutes";
         }
         break;
       case "month":
       case "months":
-        unitGetter = "getUTCMonth";
-        unitSetter = "setUTCMonth";
+        intervalGetter = "getUTCMonth";
+        intervalSetter = "setUTCMonth";
         break;
       case "d":
       case "day":
       case "days":
-        unitGetter = "getUTCDate";
-        unitSetter = "setUTCDate";
+        intervalGetter = "getUTCDate";
+        intervalSetter = "setUTCDate";
         break;
       case "h":
       case "hour":
       case "hours":
-        unitGetter = "getUTCHours";
-        unitSetter = "setUTCHours";
+        intervalGetter = "getUTCHours";
+        intervalSetter = "setUTCHours";
         break;
       // "m" already handled above
       case "minute":
       case "minutes":
-        unitGetter = "getUTCMinutes";
-        unitSetter = "setUTCMinutes";
+        intervalGetter = "getUTCMinutes";
+        intervalSetter = "setUTCMinutes";
         break;
       case "s":
       case "second":
       case "seconds":
-        unitGetter = "getUTCSeconds";
-        unitSetter = "setUTCSeconds";
+        intervalGetter = "getUTCSeconds";
+        intervalSetter = "setUTCSeconds";
         break;
       case "ms":
       case "millisecond":
       case "milliseconds":
-        unitGetter = "getUTCMilliseconds";
-        unitSetter = "setUTCMilliseconds";
+        intervalGetter = "getUTCMilliseconds";
+        intervalSetter = "setUTCMilliseconds";
         break;
       default:
         // TODO: distinct error?
@@ -4725,7 +4741,7 @@ function AQL_DATE_CALC (value, unit, amount) {
     }
   try {
         var date = MAKE_DATE([ value ], "DATE_CALC");
-        date[unitSetter](date[unitGetter]() + amount);
+        date[intervalSetter](date[intervalGetter]() + amount);
         return date.toISOString();
   }
   catch (err) {
