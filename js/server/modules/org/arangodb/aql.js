@@ -150,6 +150,18 @@ var TYPEWEIGHT_OBJECT    = 16;
 /// @brief mapping of time interval names to date constructor pos, getter, setter
 ////////////////////////////////////////////////////////////////////////////////
 
+/* TODO: test performance literal regexp vs. constructor for ISO period parsing!
+http://jsperf.com/creating-regular-expressions/4
+
+As for caching: initialize at the end of this script,
+cache[...][...] = ... is not possible.
+
+--> cache = {i: {}, "": {}, ...}
+
+Eventually clean cache?
+
+
+*/
 var intervalMapping = {
   year: [1, "getUTCFullYear", "setUTCFullYear"],
   month: [2, "getUTCMonth", "setUTCMonth"],
