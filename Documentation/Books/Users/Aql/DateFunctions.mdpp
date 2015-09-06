@@ -122,27 +122,27 @@ The following date functions can be used with dates created by *DATE_TIMESTAMP* 
 The following other date functions are also available:
 
 - *DATE_NOW()*: Returns the current time as a timestamp.
-  The return value has millisecond precision. To convert the return value to seconds, 
-  divide it by 1000.
+  The return value has millisecond precision. To convert the return value to
+  seconds, divide it by 1000.
   
-  Note that this function is evaluated on every invocation and may return different 
-  values when invoked multiple times in the same query.
+  Note that this function is evaluated on every invocation and may return
+  different values when invoked multiple times in the same query.
 
-- *DATE_CALC(date, interval, amount)*: Adds or subtracts *amount* given in *interval*
+- *DATE_CALC(date, unit, amount)*: Adds or subtracts *amount* given in *unit*
   from *date* and returns the calculated date.
 
-  *interval* can be either of the following to specify the time interval to add or subtract:
-  - Years: "y", "year", "years"
-  - Months: "M", "month", "months"
-  - Days: "d", "day", "days"
-  - Hours: "h", "hour", "hours"
-  - Minutes: "m", "minute", "minutes"
-  - Seconds: "s", "second", "seconds"
-  - Milliseconds: "ms", "millisecond", "milliseconds"
+  *unit* can be either of the following to specify the time unit to add or
+  subtract (case-insensitive):
+  - year, y
+  - month, m
+  - day, d
+  - hour, h
+  - minute, min
+  - second, s
+  - millisecond, ms
 
-  *interval* is case-insensitive, except for "M" (months) and "m" (minutes).
-
-  *amount* is the number of *interval*s to add (positive value) or subtract (negative value).
+  *amount* is the number of *unit*s to add (positive value) or subtract
+  (negative value).
 
   Examples:
 
@@ -152,6 +152,21 @@ The following other date functions are also available:
     DATE_CALC("2015-04-01", "months", 12*5 + 1) // also May 1st 2020
     DATE_CALC(DATE_TIMESTAMP(DATE_YEAR(DATE_NOW()), 12, 24), "years", -4) // Christmas four years ago
     DATE_CALC(DATE_CALC("2016-02", "month", 1), "day", -1) // last day of February (29th, because 2016 is a leap year!)
+
+- *DATE_DIFF(date1, date2, unit, withFractions)*: Calculate the difference
+  between two dates in given time *unit*, optionally with decimal places.
+  Returns a negative value if *date1* is greater than *date2*.
+
+  *unit* can be either of the following to specify the time unit to return the
+  difference in (case-insensitive):
+  - year, y
+  - month, m
+  - week, w
+  - day, d
+  - hour, h
+  - minute, min
+  - second, s
+  - millisecond, ms
 
 
 Working with dates and indices

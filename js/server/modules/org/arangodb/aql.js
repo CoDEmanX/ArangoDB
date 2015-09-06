@@ -147,7 +147,7 @@ var TYPEWEIGHT_ARRAY     = 8;
 var TYPEWEIGHT_OBJECT    = 16;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief mapping of time interval names to date constructor pos, getter, setter
+/// @brief mapping of time unit names to short name, getter and setter
 ////////////////////////////////////////////////////////////////////////////////
 
 /* TODO: test performance literal regexp vs. constructor for ISO period parsing!
@@ -159,27 +159,26 @@ cache[...][...] = ... is not possible.
 --> cache = {i: {}, "": {}, ...}
 
 Eventually clean cache?
-
-
 */
-var intervalMapping = {
-  year: [1, "getUTCFullYear", "setUTCFullYear"],
-  month: [2, "getUTCMonth", "setUTCMonth"],
-  day: [3, "getUTCDate", "setUTCDate"],
-  hour: [4, "getUTCHours", "setUTCHours"],
-  minute: [5, "getUTCMinutes", "setUTCMinutes"],
-  second: [6, "getUTCSeconds", "setUTCSeconds"],
-  millisecond: [7, "getUTCMilliseconds", "setUTCMilliseconds"]
+
+var unitMapping = {
+  y: ["y", "getUTCFullYear", "setUTCFullYear"],
+  m: ["m", "getUTCMonth", "setUTCMonth"],
+  d: ["d", "getUTCDate", "setUTCDate"],
+  h: ["h", "getUTCHours", "setUTCHours"],
+  min: ["min", "getUTCMinutes", "setUTCMinutes"],
+  s: ["s", "getUTCSeconds", "setUTCSeconds"],
+  ms: ["ms", "getUTCMilliseconds", "setUTCMilliseconds"]
 }
 
 // aliases
-intervalMapping.y = intervalMapping.year;
-intervalMapping.m = intervalMapping.month;
-intervalMapping.d = intervalMapping.day;
-intervalMapping.h = intervalMapping.hour;
-intervalMapping.min = intervalMapping.minute;
-intervalMapping.s = intervalMapping.second;
-intervalMapping.ms = intervalMapping.millisecond;
+unitMapping.year = unitMapping.y;
+unitMapping.month = unitMapping.m;
+unitMapping.day = unitMapping.d;
+unitMapping.hour = unitMapping.h;
+unitMapping.minute = unitMapping.min;
+unitMapping.second = unitMapping.s;
+unitMapping.millisecond = unitMapping.ms;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief offsets for day of year calculation
@@ -187,9 +186,9 @@ intervalMapping.ms = intervalMapping.millisecond;
 
 var dayOfYearOffsets = [
   0,
-  31, // + 31 Jan
-  59, // + 28 Feb *
-  90, // + 31 Mar
+  31,  // + 31 Jan
+  59,  // + 28 Feb*
+  90,  // + 31 Mar
   120, // + 30 Apr
   151, // + 31 May
   181, // + 30 Jun
@@ -197,14 +196,14 @@ var dayOfYearOffsets = [
   243, // + 31 Aug
   273, // + 30 Sep
   304, // + 31 Oct
-  334 // + 30 Nov
+  334  // + 30 Nov
 ];
 
 var dayOfLeapYearOffsets = [
   0,
-  31, // + 31 Jan
-  59, // + 29 Feb *
-  91, // + 31 Mar
+  31,  // + 31 Jan
+  59,  // + 29 Feb*
+  91,  // + 31 Mar
   121, // + 30 Apr
   152, // + 31 May
   182, // + 30 Jun
@@ -212,8 +211,39 @@ var dayOfLeapYearOffsets = [
   244, // + 31 Aug
   274, // + 30 Sep
   305, // + 31 Oct
-  335 // + 30 Nov
+  335  // + 30 Nov
 ];
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constants for date difference function
+////////////////////////////////////////////////////////////////////////////////
+
+// milliseconds per month, counting February as 28 days (compensating later)
+var msPerMonth = [
+  26784e5, 24192e5, 26784e5, 2592e6, 26784e5, 2592e6,
+  26784e5, 26784e5, 2592e6, 26784e5, 2592e6, 26784e5
+]
+
+var msPerUnit = {
+  ms:     1,
+  s:    1e3, // 1000
+  min:  6e4, // 1000 * 60
+  h:   36e5, // 1000 * 60 * 60
+  d:  864e5, // 1000 * 60 * 60 * 24
+  w: 6048e5, // 1000 * 60 * 60 * 24 * 7
+  m: 0,
+  y: -1
+};
+
+// Aliases
+msPerUnit.millisecond = msPerUnit.ms;
+msPerUnit.second = msPerUnit.s;
+msPerUnit.minute = msPerUnit.min
+msPerUnit.hour = msPerUnit.h;
+msPerUnit.day = msPerUnit.d;
+msPerUnit.week = msPerUnit.w;
+msPerUnit.month = msPerUnit.m;
+msPerUnit.year = msPerUnit.y;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
@@ -1760,7 +1790,7 @@ function UNARY_MINUS (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform artithmetic plus or string concatenation
+/// @brief perform arithmetic plus or string concatenation
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_PLUS (lhs, rhs) {
@@ -1780,7 +1810,7 @@ function ARITHMETIC_PLUS (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform artithmetic minus
+/// @brief perform arithmetic minus
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_MINUS (lhs, rhs) {
@@ -1800,7 +1830,7 @@ function ARITHMETIC_MINUS (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform artithmetic multiplication
+/// @brief perform arithmetic multiplication
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_TIMES (lhs, rhs) {
@@ -1820,7 +1850,7 @@ function ARITHMETIC_TIMES (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform artithmetic division
+/// @brief perform arithmetic division
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_DIVIDE (lhs, rhs) {
@@ -1841,7 +1871,7 @@ function ARITHMETIC_DIVIDE (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform artithmetic modulus
+/// @brief perform arithmetic modulus
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_MODULUS (lhs, rhs) {
@@ -4710,12 +4740,12 @@ function AQL_DATE_MILLISECOND (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return date passed with added or subtracted amount of time intervals
+/// @brief return date passed with added or subtracted amount of time units
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_DATE_CALC (value, interval, amount) {
+function AQL_DATE_CALC (value, unit, amount) {
   'use strict';
-  var m = intervalMapping[interval.toLowerCase()]; // AQL_TO_STRING?
+  var m = unitMapping[unit.toLowerCase()]; // AQL_TO_STRING?
   if (typeof m === "undefined") {
     WARN("DATE_CALC", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
@@ -4735,7 +4765,7 @@ function AQL_DATE_CALC (value, interval, amount) {
 /// @brief return if year of the date passed is a leap year
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_DATE_LEAPYEAR(value) {
+function AQL_DATE_LEAPYEAR (value) {
   'use strict';
 
   try {
@@ -4752,7 +4782,7 @@ function AQL_DATE_LEAPYEAR(value) {
 /// @brief return the day of the year of the date passed
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_DATE_DAYOFYEAR(value) {
+function AQL_DATE_DAYOFYEAR (value) {
   'use strict';
 
   try {
@@ -4772,32 +4802,55 @@ function AQL_DATE_DAYOFYEAR(value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return date difference in given interval, optionally with fractions
+/// @brief return date difference in given unit, optionally with fractions
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_DATE_DIFF(value1, value2, interval, withFractions) {
+function AQL_DATE_DIFF (value1, value2, unit, withFractions) {
   'use strict';
 
-  var m = intervalMapping[interval.toLowerCase()];
-  if (typeof m === "undefined") {
-    WARN("DATE_DIFF", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
-    return null;
+  var withFractions = (withFractions === undefined) ? false : withFractions;
+  var date1 = MAKE_DATE([ value1 ], "DATE_DIFF");
+  var date2 = MAKE_DATE([ value2 ], "DATE_DIFF");
+  if (date1 === date2) {
+    return 0;
   }
+
   try {
-    var date1 = MAKE_DATE([ value1 ], "DATE_DIFF");
-    var date2 = MAKE_DATE([ value2 ], "DATE_DIFF");
-    if (m[0] === 7) {
-        return date1 - date2;
+    var divisor = msPerUnit[unit.toLowerCase()];
+    if (divisor === undefined) {
+      WARN("DATE_DIFF", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+      return null;
     }
-    
-    
-    var m = date.getUTCMonth();
-    var d = date.getUTCDate();
-    var ly = AQL_DATE_LEAPYEAR(date.getTime());
-    // we could duplicate the leap year code here to avoid an extra MAKE_DATE() call...
-    //var yr = date.getUTCFullYear();
-    //var ly = !((yr % 4) || (!(yr % 100) && (yr % 400)));
-    return (ly ? (dayOfLeapYearOffsets[m] + d) : (dayOfYearOffsets[m] + d));
+
+    // simple calculation if not month or year
+    if (divisor > 0) {
+      return (withFractions) ? ((date2 - date1) / divisor) : (~~((date2 - date1) / divisor));
+    }
+
+    var year1 = date1.getUTCFullYear();
+    var month1 = date1.getUTCMonth();
+    var year2 = date2.getUTCFullYear();
+    var month2 = date2.getUTCMonth();
+
+    // ms in given month, leap year compensated if February and leap year
+    var month1ms = msPerMonth[month1] + ((month1 === 1 && AQL_DATE_LEAPYEAR(date1.getTime())) ? msPerUnit.d : 0);
+    // ms since beginning of month
+    var month1msOffset = date1 - Date.UTC(year1, month1);
+    var month2ms = msPerMonth[month2] + ((month2 === 1 && AQL_DATE_LEAPYEAR(date2.getTime())) ? msPerUnit.d : 0);
+    var month2msOffset = date2 - Date.UTC(year2, month2);
+
+    // Diff between YYYY-MM parts only.
+    var diff = (year2 * 12 + month2) - (year1 * 12 + month1);
+
+    // Add diff between month offsets relative to the mean of ms in both months
+    diff += ((month2msOffset - month1msOffset) / ((month1ms + month2ms) / 2));
+
+    // return 1/12th of month if unit is year - maybe this isn't what we want to do?
+    if (withFractions) {
+      return divisor ? diff / 12 : diff;
+    } else {
+      return divisor ? ~~(diff / 12) : ~~diff;
+    }
   }
   catch (err) {
     WARN("DATE_DIFF", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
@@ -8757,6 +8810,8 @@ exports.AQL_DATE_MINUTE = AQL_DATE_MINUTE;
 exports.AQL_DATE_SECOND = AQL_DATE_SECOND;
 exports.AQL_DATE_MILLISECOND = AQL_DATE_MILLISECOND;
 exports.AQL_DATE_CALC = AQL_DATE_CALC;
+exports.AQL_DATE_QUARTER = AQL_DATE_QUARTER;
+exports.AQL_DATE_DIFF = AQL_DATE_DIFF;
 
 exports.reload = reloadUserFunctions;
 
