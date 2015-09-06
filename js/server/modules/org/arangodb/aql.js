@@ -4491,7 +4491,13 @@ function MAKE_DATE (args, func) {
       }
     }
 
-    return new Date(args[0]);
+    // detect invalid dates ("foo" -> "fooZ" -> getTime() == NaN)
+    var date = new Date(args[0]);
+    if (isNaN(date)) {
+      WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE, func);
+      return null;
+    }
+    return date;
   }
 
   // called with more than one argument
@@ -4529,6 +4535,7 @@ function MAKE_DATE (args, func) {
     }
   }
 
+  // TODO: add check if Date is not NaN? Note: avoid duplicate warnings!
   return new Date(Date.UTC.apply(null, args));
 }
 
@@ -4619,7 +4626,8 @@ function AQL_DATE_QUARTER (value) {
   'use strict';
 
   try {
-    return (MAKE_DATE([ value ], "DATE_QUARTER").getUTCMonth() - 1) / 3 + 1 | 0;
+    // AQL equivalent (months are 1-based): FLOOR((DATE_MONTH("...") - 1) / 3 + 1)
+    return MAKE_DATE([ value ], "DATE_QUARTER").getUTCMonth() / 3 + 1 | 0;
   }
   catch (err) {
     WARN("DATE_QUARTER", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
@@ -4808,9 +4816,15 @@ function AQL_DATE_DAYOFYEAR (value) {
 function AQL_DATE_DIFF (value1, value2, unit, withFractions) {
   'use strict';
 
-  var withFractions = (withFractions === undefined) ? false : withFractions;
   var date1 = MAKE_DATE([ value1 ], "DATE_DIFF");
   var date2 = MAKE_DATE([ value2 ], "DATE_DIFF");
+  // Don't return any number if either or both dates are NaN.
+  if (date1 === null || date2 === null) {
+    // warning issued by MAKE_DATE() already (duplicate warnings in other date function calls???)
+    return null;
+  }
+
+  var withFractions = (withFractions === undefined) ? false : withFractions;
   if (date1 === date2) {
     return 0;
   }
