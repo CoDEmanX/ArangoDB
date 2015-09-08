@@ -4859,10 +4859,11 @@ function AQL_DATE_DIFF (value1, value2, unit, withFractions) {
     // Add diff between month offsets relative to the mean of ms in both months
     diff += ((month2msOffset - month1msOffset) / ((month1ms + month2ms) / 2));
 
-    // return 1/12th of month if unit is year - maybe this isn't what we want to do?
+    // return 1/12th of month if unit is year
     if (withFractions) {
       return divisor ? diff / 12 : diff;
     } else {
+      // round towards zero, regardless of sign
       return divisor ? ~~(diff / 12) : ~~diff;
     }
   }
