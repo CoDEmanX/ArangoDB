@@ -128,46 +128,110 @@ The following other date functions are also available:
   Note that this function is evaluated on every invocation and may return
   different values when invoked multiple times in the same query.
 
-- *DATE_CALC(date, unit, amount)*: Adds or subtracts *amount* given in *unit*
-  from *date* and returns the calculated date.
+- *DATE_ADD(date, amount, unit)*: Adds *amount* given in *unit* from *date* and
+  returns the calculated date.
 
   *unit* can be either of the following to specify the time unit to add or
   subtract (case-insensitive):
-  - year, y
-  - month, m
-  - day, d
-  - hour, h
-  - minute, min
-  - second, s
-  - millisecond, ms
+  - y, year, years
+  - m, month, months
+  - w, week, weeks
+  - d, day, days
+  - h, hour, hours
+  - i, minute, minutes
+  - s, second, seconds
+  - f, millisecond, milliseconds
 
   *amount* is the number of *unit*s to add (positive value) or subtract
   (negative value).
+  
+  Examples:
+
+    DATE_ADD(DATE_NOW(), -1, "day") // yesterday; also see DATE_SUBTRACT()
+    DATE_ADD(DATE_NOW(), 3, "months") // in three months
+    DATE_ADD(DATE_ADD("2015-04-01", 5, "years"), 1, "month") // May 1st 2020
+    DATE_ADD("2015-04-01", 12*5 + 1, "months") // also May 1st 2020
+    DATE_ADD(DATE_TIMESTAMP(DATE_YEAR(DATE_NOW()), 12, 24), -4, "years") // Christmas four years ago
+    DATE_ADD(DATE_ADD("2016-02", "month", 1), -1, "day") // last day of February (29th, because 2016 is a leap year!)
+
+  You may also pass an ISO duration string as *amount* and leave out *unit*.
+  The format is `P_Y_M_W_DT_H_M_._S`, where underscores are digits, and
+  letters are time interval (except for P = period and T = time). The meaning
+  of the other letters are: Y = years, M = months (before T), W = weeks, D = days,
+  H = hours, M = minutes (after T), S = seconds (optionally with decimal places).
+
+  The string must be prefixed by a `P`. A separating `T` is only required if
+  `H`, `M` and/or `S` are specified. You only need to specify the needed pairs
+  of amounts and time intervals.
 
   Examples:
 
-    DATE_CALC(DATE_NOW(), "day", -1) // yesterday
-    DATE_CALC(DATE_NOW(), "months", 3) // in three months
-    DATE_CALC(DATE_CALC("2015-04-01", "years", 5), "month", 1) // May 1st 2020
-    DATE_CALC("2015-04-01", "months", 12*5 + 1) // also May 1st 2020
-    DATE_CALC(DATE_TIMESTAMP(DATE_YEAR(DATE_NOW()), 12, 24), "years", -4) // Christmas four years ago
-    DATE_CALC(DATE_CALC("2016-02", "month", 1), "day", -1) // last day of February (29th, because 2016 is a leap year!)
+    DATE_ADD(DATE_NOW(), "P1Y") // add 1 year
+    DATE_ADD(DATE_NOW(), "P3M2W") // add 3 months and 2 weeks
+    DATE_ADD(DATE_NOW(), "P5DT26H") // add 5 days and 26 hours (=6 days and 2 hours)
+    DATE_ADD("2000-01-01", "PT30M44.4S" // add 30 minutes, 44 seconds and 400 ms
 
+- *DATE_SUBTRACT(date, amount, unit)*: Subtracts *amount* given in *unit* from
+  *date* and returns the calculated date.
+  
+  It works the same as *DATE_ADD()*, except that it subtracts. It is equivalent
+  to calling *DATE_ADD()* with a negative amount, except that *DATE_SUBTRACT()*
+  can also subtract ISO durations (negative ISO durations, i.e. starting with
+  `-P`, are not supported).
+
+  Examples:
+  
+    DATE_SUBTRACT(DATE_NOW(), 1, "day") // yesterday
+    DATE_SUBTRACT(DATE_TIMESTAMP(DATE_YEAR(DATE_NOW()), 12, 24), 4, "years") // Christmas four years ago
+    DATE_SUBTRACT(DATE_ADD("2016-02", "month", 1), 1, "day") // last day of February (29th, because 2016 is a leap year!)
+    DATE_SUBTRACT(DATE_NOW(), "P4D") // four days ago
+    DATE_SUBTRACT(DATE_NOW(), "PT1H3M") // 1 hour and 30 minutes ago
+    
 - *DATE_DIFF(date1, date2, unit, withFractions)*: Calculate the difference
   between two dates in given time *unit*, optionally with decimal places.
   Returns a negative value if *date1* is greater than *date2*.
 
   *unit* can be either of the following to specify the time unit to return the
   difference in (case-insensitive):
-  - year, y
-  - month, m
-  - week, w
-  - day, d
-  - hour, h
-  - minute, min
-  - second, s
-  - millisecond, ms
+  - y, year, years
+  - m, month, months
+  - w, week, weeks
+  - d, day, days
+  - h, hour, hours
+  - i, minute, minutes
+  - s, second, seconds
+  - f, millisecond, milliseconds
 
+- *DATE_COMPARE(date1, date2, unitRangeStart, unitRangeEnd)*: Compare two
+  partial dates and return true if the match, false otherwise. The parts to
+  compare are defined by a range of time units.
+  
+  The full range is: years, months, days, hours, minutes, seconds, milliseconds.
+  Pass the unit to start from as *unitRangeStart*, and the unit to end with as
+  *unitRangeEnd*. All units in between will be compared. Leave out *unitRangeEnd*
+  to only compare *unitRangeStart*. You can refer to the units as:
+  
+  - y, year, years
+  - m, month, months
+  - d, day, days
+  - h, hour, hours
+  - i, minute, minutes
+  - s, second, seconds
+  - f, millisecond, milliseconds
+
+  An error is raised if *unitRangeEnd* is a unit before *unitRangeStart*.
+  
+  Examples:
+  
+    // Compare months and days, true on birthdays if you're born on 4th of April
+    DATE_COMPARE("1985-04-04", DATE_NOW(), "months", "days")
+    
+    // Will only match on one day if the current year is a leap year!
+    // You may want to add or subtract one day from date1 to match every year.
+    DATE_COMPARE("1984-02-29", DATE_NOW(), "months", days")
+    
+    // compare years, months and days (true, because it's the same day)
+    DATE_COMPARE("2001-01-01T15:30:45.678Z", "2001-01-01T08:08:08.008Z", "years", "days")
 
 Working with dates and indices
 ------------------------------

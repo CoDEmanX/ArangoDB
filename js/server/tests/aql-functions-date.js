@@ -882,6 +882,92 @@ function ahuacatlDateFunctionsTestSuite () {
       }); 
     },
 
+// TODO: ISO duration tests
+// TODO: DATE_SUBTRACT()
+// TODO: DATE_COMPARE()
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_add function
+////////////////////////////////////////////////////////////////////////////////
+    testDateCalcInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD(1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD(1, 1, 1, 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(null, 1, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(false, 1, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD([], 1, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD({}, 1, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), 1, 'sugar')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), 1, '')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), Infinity, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), NaN, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), '', 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), '1', 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), 'one', 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), null, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), false, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), [], 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), {}, 'year')");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_add function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDateAdd : function () {
+      var values = [
+        [ ["2000-04-29", 2, "days"], "2000-05-01T00:00:00.000Z" ],
+        [ ["2000-04-29Z", 2, "days"], "2000-05-01T00:00:00.000Z" ],
+        [ ["2000-12-31", 1, "day"], "2001-01-01T00:00:00.000Z" ],
+        [ ["2000-12-31Z", 1, "day"], "2001-01-01T00:00:00.000Z" ],
+        [ ["2000-12-31Z", 1, "d"], "2001-01-01T00:00:00.000Z" ],
+        [ ["2100-12-31", 3, "months"], "2101-03-31T00:00:00.000Z" ],
+        [ ["2100-12-31Z", 3, "month"], "2101-03-31T00:00:00.000Z" ],
+        [ ["2400-12-31", 3, "M"], "2101-03-31T00:00:00.000Z" ],
+        [ ["2400-12-31Z", -3, "M"], "2100-10-01T00:00:00.000Z" ], /* which is 2100-09-30T24:00:00.000Z*/
+        [ ["2012-02-12 13:24:12", 10, "minutes"], "2012-02-12T13:34:12.000Z" ],
+        [ ["2012-02-12 13:24:12Z", 10, "M"], "2012-02-12T13:34:12.000Z" ],
+        [ ["2012-02-12 23:59:59.991", 9, "milliseconds"], "2012-02-13T00:00:00.000Z" ],
+        [ ["2012-02-12 23:59:59.991Z", 9, "ms"], "2012-02-13T00:00:00.000Z" ],
+        [ ["2012-02-12", 8, "years"], "2020-02-12T00:00:00.000Z" ],
+        [ ["2012-02-12Z", 8, "year"], "2020-02-12T00:00:00.000Z" ],
+        [ ["2012-02-12T13:24:12Z", 8, "y"], "2020-02-12T13:24:12.000Z" ],
+        [ ["2012-02-12Z", -100, "years"], "1912-02-12T00:00:00.000Z" ],
+        [ ["2012-2-12Z", -100, "years"], "1912-02-12T00:00:00.000Z" ],
+        [ ["1910-01-02T03:04:05Z", 5, "hours"], "1910-01-02T08:04:05Z" ],
+        [ ["1910-01-02 03:04:05Z", 5, "hour"], "1910-01-02T08:04:05Z" ],
+        [ ["1910-01-02", 5, "5"], "1910-01-02T00:00:00.000Z" ],
+        [ ["1910-01-02Z", 5, "5"], "1910-01-02T00:00:00.000Z" ],
+        [ ["1221-02-28T23:59:59Z", 800*12, "months"], "2021-02-28T23:59:59.000Z" ],
+        [ ["1221-02-28 23:59:59Z", 800, "years"], "2021-02-28T23:59:59.000Z" ],
+        [ ["1221-02-28Z", 1000*(60*60*24-1), "ms"], "2021-02-28T23:59:59.000Z" ],
+        [ ["1221-2-28Z", 1, "day"], "2021-03-01T00:00:00.000Z" ],
+        [ ["2016Z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["2016z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["2016", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["2016-1Z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["2016-1z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["2016-1-1z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["2016-01-01Z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["  2016-01-01Z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["  2016-01-01z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ [1399395674000, "days", 365], "2015-05-06T17:01:14.000Z" ],
+        [ [1430931674000, "days", 365], "2016-05-05T17:01:14.000Z" ], /* leap year */
+        [ [60123, "days", 7], "1970-01-08T00:01:00.123Z" ],
+        [ [1, "ms", -1], "1970-01-01T00:00:00.000Z" ],
+        [ [0, "ms", 0], "1970-01-01T00:00:00.000Z" ]
+      ];
+
+      values.forEach(function (value) {
+        var actual = getQueryResults("RETURN DATE_ADD(@value, @amount, @unit)", {
+          value: value[0][0],
+          amount: value[0][1],
+          unit: value[0][2],
+        });
+        assertEqual([ value[1] ], actual);
+      }); 
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test date_calc function
 ////////////////////////////////////////////////////////////////////////////////

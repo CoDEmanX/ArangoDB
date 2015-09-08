@@ -166,19 +166,69 @@ var unitMapping = {
   m: ["m", "getUTCMonth", "setUTCMonth"],
   d: ["d", "getUTCDate", "setUTCDate"],
   h: ["h", "getUTCHours", "setUTCHours"],
-  min: ["min", "getUTCMinutes", "setUTCMinutes"],
+  i: ["i", "getUTCMinutes", "setUTCMinutes"],
   s: ["s", "getUTCSeconds", "setUTCSeconds"],
-  ms: ["ms", "getUTCMilliseconds", "setUTCMilliseconds"]
+  f: ["f", "getUTCMilliseconds", "setUTCMilliseconds"]
 }
 
 // aliases
+unitMapping.years = unitMapping.y;
 unitMapping.year = unitMapping.y;
+unitMapping.months = unitMapping.m;
 unitMapping.month = unitMapping.m;
+unitMapping.days = unitMapping.d;
 unitMapping.day = unitMapping.d;
+unitMapping.hours = unitMapping.h;
 unitMapping.hour = unitMapping.h;
-unitMapping.minute = unitMapping.min;
+unitMapping.minutes = unitMapping.i;
+unitMapping.minute = unitMapping.i;
+unitMapping.seconds = unitMapping.s;
 unitMapping.second = unitMapping.s;
-unitMapping.millisecond = unitMapping.ms;
+unitMapping.milliseconds = unitMapping.f;
+unitMapping.millisecond = unitMapping.f;
+unitMapping.ms = unitMapping.f;
+
+var unitMappingArray = [null, "y", "m", "w", "d", "h", "i", "s", "f"];
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief RegExp and cache for ISO duration strings
+////////////////////////////////////////////////////////////////////////////////
+
+// ISODurationRegex.exec("P1Y2M3W4DT5H6M7.890S")
+// -> ["P1Y2M3W4DT5H6M7.890S", "1", "2", "3", "4", "5", "6", "7", "890"]
+var ISODurationRegex = /^P(?:(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.(\d+))?S)?)?$/i;
+
+var ISODurationCache = {}; // TODO: Use LRU cache to avoid memory hara-kiri
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief substring ranges for DATE_COMPARE()
+////////////////////////////////////////////////////////////////////////////////
+
+// 0123_56_89_12_45_78_012_
+var unitStrRanges = {
+  y: [0, 4],
+  m: [5, 7],
+  d: [8, 10],
+  h: [11, 13],
+  i: [14, 16],
+  s: [17, 19],
+  f: [20, 23]
+}
+unitStrRanges.years = unitStrRanges.y;
+unitStrRanges.year = unitStrRanges.y;
+unitStrRanges.months = unitStrRanges.m;
+unitStrRanges.month = unitStrRanges.m;
+unitStrRanges.days = unitStrRanges.d;
+unitStrRanges.day = unitStrRanges.d;
+unitStrRanges.hours = unitStrRanges.h;
+unitStrRanges.hour = unitStrRanges.h;
+unitStrRanges.minutes = unitStrRanges.i;
+unitStrRanges.minute = unitStrRanges.i;
+unitStrRanges.seconds = unitStrRanges.s;
+unitStrRanges.second = unitStrRanges.s;
+unitStrRanges.milliseconds = unitStrRanges.f;
+unitStrRanges.millisecond = unitStrRanges.f;
+unitStrRanges.ms = unitStrRanges.f;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief offsets for day of year calculation
@@ -225,24 +275,33 @@ var msPerMonth = [
 ]
 
 var msPerUnit = {
-  ms:     1,
+  f:      1,
   s:    1e3, // 1000
-  min:  6e4, // 1000 * 60
+  i:    6e4, // 1000 * 60
   h:   36e5, // 1000 * 60 * 60
   d:  864e5, // 1000 * 60 * 60 * 24
   w: 6048e5, // 1000 * 60 * 60 * 24 * 7
-  m: 0,
-  y: -1
+  m: 0, // evaluates to false
+  y: -1 // evaluates to true to distinguish it from months
 };
 
 // Aliases
-msPerUnit.millisecond = msPerUnit.ms;
+msPerUnit.milliseconds = msPerUnit.f;
+msPerUnit.millisecond = msPerUnit.f;
+msPerUnit.ms = msPerUnit.f;
+msPerUnit.seconds = msPerUnit.s;
 msPerUnit.second = msPerUnit.s;
-msPerUnit.minute = msPerUnit.min
+msPerUnit.minutes = msPerUnit.i
+msPerUnit.minute = msPerUnit.i
+msPerUnit.hours = msPerUnit.h;
 msPerUnit.hour = msPerUnit.h;
+msPerUnit.days = msPerUnit.d;
 msPerUnit.day = msPerUnit.d;
+msPerUnit.weeks = msPerUnit.w;
 msPerUnit.week = msPerUnit.w;
+msPerUnit.months = msPerUnit.m;
 msPerUnit.month = msPerUnit.m;
+msPerUnit.years = msPerUnit.y;
 msPerUnit.year = msPerUnit.y;
 
 // -----------------------------------------------------------------------------
@@ -4748,25 +4807,81 @@ function AQL_DATE_MILLISECOND (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return date passed with added or subtracted amount of time units
+/// @brief internal function to add or subtract from date
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_DATE_CALC (value, unit, amount) {
+function DATE_CALC(value, amount, unit, func) {
   'use strict';
-  var m = unitMapping[unit.toLowerCase()]; // AQL_TO_STRING?
-  if (typeof m === "undefined") {
-    WARN("DATE_CALC", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
-    return null;
-  }
   try {
-    var date = MAKE_DATE([ value ], "DATE_CALC");
-    date[m[2]](date[m[1]]() + amount);
-    return date.toISOString();
+    var date = MAKE_DATE([ value ], func); // TODO: check if isNaN?
+    var sign = (func === "DATE_ADD" || func === undefined) ? 1 : -1;
+    
+    // if amount is not a number, than it must be an ISO duration string
+    if (isNaN(amount)) {
+      if (unit !== undefined) {
+        WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
+      }
+      // ISO duration cache
+      var duration;
+      if (ISODurationCache[amount] === undefined) {
+        duration = ISODurationRegex.exec(amount);
+        if (!duration) {
+          WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+          return null;
+        }
+        ISODurationCache[amount] = duration;
+      } else {
+        duration = ISODurationCache[amount];
+      }
+
+      // add or subtract component by component, from ms to year
+      var m;
+      for (var d=duration.length-1; d>=1; d--) {
+        if (duration[d]) {
+          // convert weeks to days
+          if (d === 3) {
+            m = unitMapping[unitMappingArray[4]];
+            date[m[2]](date[m[1]]() + duration[d] * sign * 7);
+          } else {
+            m = unitMapping[unitMappingArray[d]];
+            date[m[2]](date[m[1]]() + duration[d] * sign);
+          }
+        }
+      }
+      return date.toISOString();
+    } else {
+      var m = unitMapping[unit.toLowerCase()]; // AQL_TO_STRING?
+      if (typeof m === "undefined") {
+        WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+        return null;
+      }
+      date[m[2]](date[m[1]]() + amount * sign);
+      return date.toISOString();
+    }
   }
   catch (err) {
-    WARN("DATE_CALC", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return date passed with added amount of time units
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_ADD (value, amount, unit) {
+  'use strict';
+  return DATE_CALC(value, amount, unit, "DATE_ADD");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return date passed with subtracted amount of time units
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_SUBTRACT (value, amount, unit) {
+  'use strict';
+  return DATE_CALC(value, amount, unit, "DATE_SUBTRACT");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4869,6 +4984,43 @@ function AQL_DATE_DIFF (value1, value2, unit, withFractions) {
   }
   catch (err) {
     WARN("DATE_DIFF", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two partial dates, using a substring of the dates
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
+  try {
+    // TODO: Should we handle leap years, so leapling birthdays occur every year?
+    // It may result in unexpected behavior if it's used for something else but
+    // birthday checking...
+    var date1 = MAKE_DATE([ value1 ], "DATE_COMPARE");
+    var date2 = MAKE_DATE([ value2 ], "DATE_COMPARE");
+    if (isNaN(date1) || isNaN(date2)) {
+      return null;
+    }
+    if (unitRangeEnd === undefined) {
+      unitRangeEnd = unitRangeStart;
+    }
+    var start = unitStrRanges[unitRangeStart][0];
+    var end = unitStrRanges[unitRangeEnd][1];
+    if (start === undefined || end === undefined) {
+      WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+      return null;
+    }
+    var substr1 = date1.toISOString().slice(start, end);
+    var substr2 = date2.toISOString().slice(start, end);
+    // if unitRangeEnd > unitRangeStart, substrings will be empty
+    if (!substr1 || !substr2) {
+      WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+      return null;
+    }
+    return 
+  } catch (err) {
+    WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
@@ -8824,9 +8976,11 @@ exports.AQL_DATE_HOUR = AQL_DATE_HOUR;
 exports.AQL_DATE_MINUTE = AQL_DATE_MINUTE;
 exports.AQL_DATE_SECOND = AQL_DATE_SECOND;
 exports.AQL_DATE_MILLISECOND = AQL_DATE_MILLISECOND;
-exports.AQL_DATE_CALC = AQL_DATE_CALC;
+exports.AQL_DATE_ADD = AQL_DATE_ADD;
+exports.AQL_DATE_SUBTRACT = AQL_DATE_SUBTRACT;
 exports.AQL_DATE_QUARTER = AQL_DATE_QUARTER;
 exports.AQL_DATE_DIFF = AQL_DATE_DIFF;
+exports.AQL_DATE_COMPARE = AQL_DATE_COMPARE;
 
 exports.reload = reloadUserFunctions;
 

@@ -103,7 +103,7 @@ var AqlHighlightRules = function() {
         "graph_eccentricity|graph_betweenness|graph_closeness|graph_absolute_eccentricity|" +
         "graph_absolute_betweenness|graph_absolute_closeness|graph_diameter|graph_radius|date_now|" +
         "date_timestamp|date_iso8601|date_dayofweek|date_year|date_month|date_day|date_hour|" +
-        "date_dayofyear|date_isoweek|date_leapyear|date_calc|date_quarter|date_diff|" +
+        "date_dayofyear|date_isoweek|date_leapyear|date_add|date_subtract|date_quarter|date_diff|date_compare|" +
         "date_minute|date_second|date_millisecond|fail|passthru|sleep|not_null|" +
         "first_list|first_document|parse_identifier|current_user|current_database|" +
         "collections|document|union|union_distinct|intersection|flatten|" +
