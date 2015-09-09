@@ -5018,7 +5018,7 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
       WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
       return null;
     }
-    return 
+    return substr1 === substr2;
   } catch (err) {
     WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
