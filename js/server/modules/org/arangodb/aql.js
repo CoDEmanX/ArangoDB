@@ -309,6 +309,20 @@ msPerUnit.year = msPerUnit.y;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add zeros for a total length of width chars (left padding by default)
+////////////////////////////////////////////////////////////////////////////////
+
+function zeropad(n, width, padRight) {
+  padRight = padRight || false;
+  n = "" + n;
+  if (padRight) {
+    return n.length >= width ? n : n + new Array(width - n.length + 1).join("0");
+  } else {
+    return n.length >= width ? n : new Array(width - n.length + 1).join("0") + n;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief raise a warning
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4659,42 +4673,6 @@ function AQL_DATE_DAYOFWEEK (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the ISO week date of the date passed (1..53)
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_DATE_ISOWEEK (value) {
-  'use strict';
-
-  try {
-    var date = MAKE_DATE([ value ], "DATE_ISOWEEK");
-    date.setUTCHours(0, 0, 0, 0);
-    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
-    return Math.ceil((((date - Date.UTC(date.getUTCFullYear(), 0, 1)) / 864e5) + 1) / 7);
-  }
-  catch (err) {
-    WARN("DATE_ISOWEEK", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
-    return null;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the ISO week date of the date passed (1..53)
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_DATE_QUARTER (value) {
-  'use strict';
-
-  try {
-    // AQL equivalent (months are 1-based): FLOOR((DATE_MONTH("...") - 1) / 3 + 1)
-    return MAKE_DATE([ value ], "DATE_QUARTER").getUTCMonth() / 3 + 1 | 0;
-  }
-  catch (err) {
-    WARN("DATE_QUARTER", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
-    return null;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the year of the date passed
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4807,11 +4785,86 @@ function AQL_DATE_MILLISECOND (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the day of the year of the date passed
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_DAYOFYEAR (value) {
+  'use strict';
+
+  try {
+    var date = MAKE_DATE([ value ], "DATE_DAYOFYEAR");
+    var m = date.getUTCMonth();
+    var d = date.getUTCDate();
+    var ly = AQL_DATE_LEAPYEAR(date.getTime());
+    // we could duplicate the leap year code here to avoid an extra MAKE_DATE() call...
+    //var yr = date.getUTCFullYear();
+    //var ly = !((yr % 4) || (!(yr % 100) && (yr % 400)));
+    return (ly ? (dayOfLeapYearOffsets[m] + d) : (dayOfYearOffsets[m] + d));
+  }
+  catch (err) {
+    WARN("DATE_DAYOFYEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the ISO week date of the date passed (1..53)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_ISOWEEK (value) {
+  'use strict';
+
+  try {
+    var date = MAKE_DATE([ value ], "DATE_ISOWEEK");
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+    return Math.ceil((((date - Date.UTC(date.getUTCFullYear(), 0, 1)) / 864e5) + 1) / 7);
+  }
+  catch (err) {
+    WARN("DATE_ISOWEEK", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return if year of the date passed is a leap year
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_LEAPYEAR (value) {
+  'use strict';
+
+  try {
+    var yr = MAKE_DATE([ value ], "DATE_LEAPYEAR").getUTCFullYear();
+    return !((yr % 4) || (!(yr % 100) && (yr % 400)));
+  }
+  catch (err) {
+    WARN("DATE_LEAPYEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the ISO week date of the date passed (1..53)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_QUARTER (value) {
+  'use strict';
+
+  try {
+    return MAKE_DATE([ value ], "DATE_QUARTER").getUTCMonth() / 3 + 1 | 0;
+  }
+  catch (err) {
+    WARN("DATE_QUARTER", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief internal function to add or subtract from date
 ////////////////////////////////////////////////////////////////////////////////
 
 function DATE_CALC(value, amount, unit, func) {
   'use strict';
+
   try {
     var date = MAKE_DATE([ value ], func); // TODO: check if isNaN?
     var sign = (func === "DATE_ADD" || func === undefined) ? 1 : -1;
@@ -4834,7 +4887,10 @@ function DATE_CALC(value, amount, unit, func) {
       } else {
         duration = ISODurationCache[amount];
       }
-
+      // ensure ms has a length of 3
+      if (duration[8] && duration[8].length !== 3) {
+        duration[8] = zeropad(duration[8], 3, true).substring(0, 3);
+      }
       // add or subtract component by component, from ms to year
       var m;
       for (var d=duration.length-1; d>=1; d--) {
@@ -4849,7 +4905,7 @@ function DATE_CALC(value, amount, unit, func) {
           }
         }
       }
-      return date.toISOString();
+      return date.toISOString(); 
     } else {
       var m = unitMapping[unit.toLowerCase()]; // AQL_TO_STRING?
       if (typeof m === "undefined") {
@@ -4884,51 +4940,12 @@ function AQL_DATE_SUBTRACT (value, amount, unit) {
   return DATE_CALC(value, amount, unit, "DATE_SUBTRACT");
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return if year of the date passed is a leap year
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_DATE_LEAPYEAR (value) {
-  'use strict';
-
-  try {
-    var yr = MAKE_DATE([ value ], "DATE_LEAPYEAR").getUTCFullYear();
-    return !((yr % 4) || (!(yr % 100) && (yr % 400)));
-  }
-  catch (err) {
-    WARN("DATE_LEAPYEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
-    return null;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the day of the year of the date passed
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_DATE_DAYOFYEAR (value) {
-  'use strict';
-
-  try {
-    var date = MAKE_DATE([ value ], "DATE_DAYOFYEAR");
-    var m = date.getUTCMonth();
-    var d = date.getUTCDate();
-    var ly = AQL_DATE_LEAPYEAR(date.getTime());
-    // we could duplicate the leap year code here to avoid an extra MAKE_DATE() call...
-    //var yr = date.getUTCFullYear();
-    //var ly = !((yr % 4) || (!(yr % 100) && (yr % 400)));
-    return (ly ? (dayOfLeapYearOffsets[m] + d) : (dayOfYearOffsets[m] + d));
-  }
-  catch (err) {
-    WARN("DATE_DAYOFYEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
-    return null;
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return date difference in given unit, optionally with fractions
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_DATE_DIFF (value1, value2, unit, withFractions) {
+function AQL_DATE_DIFF (value1, value2, unit, asFloat) {
   'use strict';
 
   var date1 = MAKE_DATE([ value1 ], "DATE_DIFF");
@@ -4939,7 +4956,7 @@ function AQL_DATE_DIFF (value1, value2, unit, withFractions) {
     return null;
   }
 
-  var withFractions = (withFractions === undefined) ? false : withFractions;
+  var asFloat = (asFloat === undefined) ? false : asFloat;
   if (date1 === date2) {
     return 0;
   }
@@ -4953,7 +4970,7 @@ function AQL_DATE_DIFF (value1, value2, unit, withFractions) {
 
     // simple calculation if not month or year
     if (divisor > 0) {
-      return (withFractions) ? ((date2 - date1) / divisor) : (~~((date2 - date1) / divisor));
+      return (asFloat) ? ((date2 - date1) / divisor) : (~~((date2 - date1) / divisor));
     }
 
     var year1 = date1.getUTCFullYear();
@@ -4975,7 +4992,7 @@ function AQL_DATE_DIFF (value1, value2, unit, withFractions) {
     diff += ((month2msOffset - month1msOffset) / ((month1ms + month2ms) / 2));
 
     // return 1/12th of month if unit is year
-    if (withFractions) {
+    if (asFloat) {
       return divisor ? diff / 12 : diff;
     } else {
       // round towards zero, regardless of sign
@@ -5011,6 +5028,12 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
       WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
       return null;
     }
+    if (date1.getUTCFullYear() < 0 && start !== 0) {
+      start += 3;
+    }
+    if (date2.getUTCFullYear() < 0) {
+      end += 3;
+    }
     var substr1 = date1.toISOString().slice(start, end);
     var substr2 = date2.toISOString().slice(start, end);
     // if unitRangeEnd > unitRangeStart, substrings will be empty
@@ -5021,6 +5044,45 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
     return substr1 === substr2;
   } catch (err) {
     WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief format a date (numerical values only)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_FORMAT (value, format) {
+  'use strict';
+  try {
+    var date = MAKE_DATE([ value ], "DATE_FORMAT");
+    var dateStr = date.toISOString();
+    var offset = date.getUTCFullYear() < 0 ? 3 : 0;
+    var dateMap = {
+      "%t": date.getTime(),
+      "%o": dateStr,
+      "%w": AQL_DATE_DAYOFWEEK(dateStr),
+      "%y": dateStr.slice(0, 4 + offset),
+      "%m": dateStr.slice(5 + offset, 7 + offset),
+      "%d": dateStr.slice(8 + offset, 10 + offset),
+      "%h": dateStr.slice(11 + offset, 13 + offset),
+      "%i": dateStr.slice(14 + offset, 16 + offset),
+      "%s": dateStr.slice(17 + offset, 19 + offset),
+      "%f": dateStr.slice(20 + offset, 23 + offset),
+      "%x": zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3),
+      "%k": zeropad(AQL_DATE_ISOWEEK(dateStr), 2),
+      "%l": +AQL_DATE_LEAPYEAR(dateStr),
+      "%q": AQL_DATE_QUARTER(dateStr),
+      "%%": "%" // Allow for literal "%Y" using "%%Y"
+      //"%": "" // Not reliable, because Object.keys() does not guarantee order
+    };
+    var exp = new RegExp(Object.keys(dateMap).join("|"), "gi"); 
+    format = format.replace(exp, function(match){
+      return dateMap[match.toLowerCase()];
+    });
+    return format;
+  } catch (err) {
+    WARN("DATE_FORMAT", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
@@ -8981,6 +9043,7 @@ exports.AQL_DATE_SUBTRACT = AQL_DATE_SUBTRACT;
 exports.AQL_DATE_QUARTER = AQL_DATE_QUARTER;
 exports.AQL_DATE_DIFF = AQL_DATE_DIFF;
 exports.AQL_DATE_COMPARE = AQL_DATE_COMPARE;
+exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
 
 exports.reload = reloadUserFunctions;
 
