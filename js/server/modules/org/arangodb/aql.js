@@ -150,17 +150,6 @@ var TYPEWEIGHT_OBJECT    = 16;
 /// @brief mapping of time unit names to short name, getter and setter
 ////////////////////////////////////////////////////////////////////////////////
 
-/* TODO: test performance literal regexp vs. constructor for ISO period parsing!
-http://jsperf.com/creating-regular-expressions/4
-
-As for caching: initialize at the end of this script,
-cache[...][...] = ... is not possible.
-
---> cache = {i: {}, "": {}, ...}
-
-Eventually clean cache?
-*/
-
 var unitMapping = {
   y: ["y", "getUTCFullYear", "setUTCFullYear"],
   m: ["m", "getUTCMonth", "setUTCMonth"],
@@ -198,7 +187,7 @@ var unitMappingArray = [null, "y", "m", "w", "d", "h", "i", "s", "f"];
 // -> ["P1Y2M3W4DT5H6M7.890S", "1", "2", "3", "4", "5", "6", "7", "890"]
 var ISODurationRegex = /^P(?:(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.(\d+))?S)?)?$/i;
 
-var ISODurationCache = {}; // TODO: Use LRU cache to avoid memory hara-kiri
+var ISODurationCache = {}; // TODO: clear cache for every new AQL query to avoid memory leak
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief substring ranges for DATE_COMPARE()
@@ -4608,7 +4597,7 @@ function MAKE_DATE (args, func) {
     }
   }
 
-  // TODO: add check if Date is not NaN? Note: avoid duplicate warnings!
+  // TODO: add check if Date is NaN? Note: avoid duplicate warnings!
   return new Date(Date.UTC.apply(null, args));
 }
 
@@ -4866,7 +4855,10 @@ function DATE_CALC(value, amount, unit, func) {
   'use strict';
 
   try {
-    var date = MAKE_DATE([ value ], func); // TODO: check if isNaN?
+    // TODO: check if isNaN? If called by AQL FOR-loop, should query throw
+    // and terminate immediately, or return a bunch of 'null's? If it shall
+    // stop, then best handled in MAKE_DATE() itself I guess.
+    var date = MAKE_DATE([ value ], func);
     var sign = (func === "DATE_ADD" || func === undefined) ? 1 : -1;
     
     // if amount is not a number, than it must be an ISO duration string
@@ -4907,7 +4899,7 @@ function DATE_CALC(value, amount, unit, func) {
       }
       return date.toISOString(); 
     } else {
-      var m = unitMapping[unit.toLowerCase()]; // AQL_TO_STRING?
+      var m = unitMapping[unit.toLowerCase()]; // TODO: AQL_TO_STRING?
       if (typeof m === "undefined") {
         WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
         return null;
@@ -5013,7 +5005,7 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
   try {
     // TODO: Should we handle leap years, so leapling birthdays occur every year?
     // It may result in unexpected behavior if it's used for something else but
-    // birthday checking...
+    // birthday checking however. Probably best to leave compensation up to user query.
     var date1 = MAKE_DATE([ value1 ], "DATE_COMPARE");
     var date2 = MAKE_DATE([ value2 ], "DATE_COMPARE");
     if (isNaN(date1) || isNaN(date2)) {
@@ -9038,9 +9030,12 @@ exports.AQL_DATE_HOUR = AQL_DATE_HOUR;
 exports.AQL_DATE_MINUTE = AQL_DATE_MINUTE;
 exports.AQL_DATE_SECOND = AQL_DATE_SECOND;
 exports.AQL_DATE_MILLISECOND = AQL_DATE_MILLISECOND;
+exports.AQL_DATE_DAYOFYEAR = AQL_DATE_DAYOFYEAR;
+exports.AQL_DATE_ISOWEEK = AQL_DATE_ISOWEEK;
+exports.AQL_DATE_LEAPYEAR = AQL_DATE_LEAPYEAR;
+exports.AQL_DATE_QUARTER = AQL_DATE_QUARTER;
 exports.AQL_DATE_ADD = AQL_DATE_ADD;
 exports.AQL_DATE_SUBTRACT = AQL_DATE_SUBTRACT;
-exports.AQL_DATE_QUARTER = AQL_DATE_QUARTER;
 exports.AQL_DATE_DIFF = AQL_DATE_DIFF;
 exports.AQL_DATE_COMPARE = AQL_DATE_COMPARE;
 exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;

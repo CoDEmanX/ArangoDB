@@ -891,7 +891,7 @@ function ahuacatlDateFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test date_add function
 ////////////////////////////////////////////////////////////////////////////////
-    testDateCalcInvalid : function () {
+    testDateAddInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD(1, 1)");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD(1, 1, 1, 1)");
