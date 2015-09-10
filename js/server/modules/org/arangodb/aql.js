@@ -185,7 +185,10 @@ var unitMappingArray = [null, "y", "m", "w", "d", "h", "i", "s", "f"];
 
 // ISODurationRegex.exec("P1Y2M3W4DT5H6M7.890S")
 // -> ["P1Y2M3W4DT5H6M7.890S", "1", "2", "3", "4", "5", "6", "7", "890"]
-var ISODurationRegex = /^P(?:(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.(\d+))?S)?)?$/i;
+// ignore maxlen jshint check
+// jshint -W130
+var ISODurationRegex = /^P(?:(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.(\d+))?S)?)?$/i; // jshint ignore:line
+// jshint +W130
 
 var ISODurationCache = {}; // TODO: clear cache for every new AQL query to avoid memory leak
 
@@ -4824,7 +4827,7 @@ function AQL_DATE_LEAPYEAR (value) {
 
   try {
     var yr = MAKE_DATE([ value ], "DATE_LEAPYEAR").getUTCFullYear();
-    return !((yr % 4) || (!(yr % 100) && (yr % 400)));
+    return ((yr % 4 === 0) && (yr % 100 !== 0)) || (yr % 400 === 0);
   }
   catch (err) {
     WARN("DATE_LEAPYEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
